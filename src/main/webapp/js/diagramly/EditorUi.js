@@ -1328,7 +1328,7 @@
 		var editLink = null;
 		var redirect = null;
 		
-		if (file == null || file.getMode() == App.MODE_DEVICE || file.getMode() == App.MODE_BROWSER)
+		if (file == null || file.getMode() == App.MODE_DEVICE || file.getMode() == App.MODE_LZC || file.getMode() == App.MODE_BROWSER)
 		{
 			editLink = '_blank';
 		}
@@ -1460,7 +1460,7 @@
 			// Maps the XML data to the content attribute in the SVG node 
 			else if (forceSvg || (!forceXml && file != null && /(\.svg)$/i.test(file.getTitle())))
 			{
-				if (file != null && (file.getMode() == App.MODE_DEVICE || file.getMode() == App.MODE_BROWSER))
+				if (file != null && (file.getMode() == App.MODE_DEVICE || file.getMode() == App.MODE_LZC|| file.getMode() == App.MODE_BROWSER))
 				{
 					url = null;
 				}

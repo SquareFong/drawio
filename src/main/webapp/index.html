@@ -16,6 +16,7 @@
 	<meta name="msapplication-config" content="images/browserconfig.xml">
     <meta name="mobile-web-app-capable" content="yes">
 	<meta name="theme-color" content="#d89000">
+	<script src="js/lzc-file-pickers.umd.js"></script>
 	<script id="geBootstrap" type="text/javascript">
 		/**
 		 * URL Parameters and protocol description are here:
@@ -442,6 +443,21 @@
 		</p>
 	</div>
 </div>
+<lzc-file-picker
+            id="lzc-folder-picker"
+            type="directory"
+            title="保存到："
+            accept="*.drawio"
+            breadcrumb-root-title="根目录"
+            ></lzc-file-picker>
+
+<lzc-file-picker
+    id="lzc-file-picker"
+    type="file"
+    title="保存到："
+    accept="*.drawio"
+    breadcrumb-root-title="根目录"
+></lzc-file-picker>
 <script id="geMain" type="text/javascript">
 /**
  * Main

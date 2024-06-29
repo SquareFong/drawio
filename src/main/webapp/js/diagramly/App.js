@@ -229,6 +229,9 @@ App.MODE_GITLAB = 'gitlab';
  */
 App.MODE_DEVICE = 'device';
 
+
+App.MODE_LZC = 'lzc';
+
 /**
  * Browser Mode
  */
@@ -1680,6 +1683,7 @@ App.prototype.init = function()
 			{
 				var doInit = mxUtils.bind(this, function()
 				{
+					return
 					try
 					{
 						this.drive = new DriveClient(this);
@@ -3816,8 +3820,9 @@ App.prototype.showSplash = function(force)
 			showSecondDialog();
 		}), rowLimit);
 		
-		this.showDialog(dlg.container, (rowLimit < 3) ? 200 : 300,
-			((serviceCount > 3) ? 320 : 210), true, false);
+		SkipDialog(this)
+		/* this.showDialog(dlg.container, (rowLimit < 3) ? 200 : 300,
+			((serviceCount > 3) ? 320 : 210), true, false); */
 	}
 	else if (urlParams['create'] == null)
 	{
@@ -4552,7 +4557,7 @@ App.prototype.saveFile = function(forceDialog, success)
 			{
 				// Workaround for possible status update while save as dialog is showing
 				// is to show no saved status for device files
-				if (file.getMode() != App.MODE_DEVICE)
+				if (file.getMode() != App.MODE_DEVICE && file.getMode != App.MODE_LZC)
 				{
 					this.editor.setStatus(mxUtils.htmlEntities(mxResources.get('allChangesSaved')));
 				}
@@ -4644,6 +4649,92 @@ App.prototype.saveFile = function(forceDialog, success)
 								this.setMode(App.MODE_DEVICE);
 								this.save(name, done);
 							}
+						}
+						else if (mode == App.MODE_LZC) {
+							console.log("select", mode)
+							console.log(this.getCurrentFile())
+							//this.editor.autosave = 1
+							window.testfile=file
+							let saveToLzc = (url, name) => {
+								let desc = {
+									name:name,
+									size:0,
+									type:"",
+									lastModified:0,
+									lastModifiedDate:new Date(),
+									webkitRelativePath:""
+								}
+								let fileHandle = {
+									kind: "file",
+									name: name, // 文件选择器选择
+									url: url, // 文件选择器选择的
+									createWritable: function(){
+										let writeable = {}
+										writeable.write = function(data){
+											/* var blobObj = new Blob([data], {type: 'text/plain'});
+											var obj = new FormData();
+											obj.append(fileHandle.name, blobObj); */
+											
+
+											return new Promise((resolve, reject) => {
+												const req = new XMLHttpRequest();
+												req.open("PUT", fileHandle.url, true);
+												req.onload = (event) => {
+													// Uploaded
+													resolve(event)
+												};
+												req.onerror = (e) => {
+													reject(e)
+												}
+
+												const blob = new Blob([data], { type: "text/plain" });
+
+												req.send(blob);
+											})
+										}
+										writeable.close = function(){
+											return new Promise((resolve) => {
+												resolve()
+											})
+										}
+
+										return new Promise((resolve, reject) => {
+											resolve(writeable)
+										})
+									},
+									getFile: function(){
+										return new Promise((resolve, reject) => {
+											resolve(desc)
+										})
+									}
+
+								};
+
+								file.fileHandle = fileHandle;
+								file.mode = App.MODE_LZC;
+								file.title = desc.name;
+								file.desc = desc;
+								this.setMode(App.MODE_LZC)
+								this.save(desc.name, done);
+							}
+
+							if (!window.lzcPicker) {
+								window.lzcPicker = document.getElementById('lzc-folder-picker');
+								window.lzcPicker._instance.exposed.init('/_lzc/files/home');
+								window.lzcPicker.addEventListener('visible', () => {
+									window.lzcPicker._instance.exposed.close();
+								});
+								window.lzcPicker.addEventListener('submit', (raw) => {
+									let path = raw.detail[0].filename
+									let filename = name.endsWith(".drawio") ? name : name + ".drawio"
+									let url = location.origin + '/_lzc/files/home' + path + "/" + filename;
+									
+									window.lzcDest = raw;
+									window.lzcPicker._instance.exposed.close();
+									saveToLzc(url, filename)
+								});
+							}
+							document.getElementById('lzc-folder-picker')._instance.exposed.open();
 						}
 						else if (mode == 'download')
 						{
@@ -4852,6 +4943,7 @@ App.prototype.getModeForChar = function(char)
  */
 App.prototype.isModeEnabled = function(mode)
 {
+	return false
 	if (mode == App.MODE_GOOGLE)
 	{
 		return typeof window.DriveClient === 'function' &&
@@ -4906,6 +4998,7 @@ App.prototype.isModeEnabled = function(mode)
  */
 App.prototype.isModeReady = function(mode)
 {
+	return false
 	return this.getServiceForName(mode) != null &&
 		(mode != App.MODE_DROPBOX ||
 		typeof Dropbox.choose !== 'undefined');
@@ -6448,6 +6541,7 @@ App.prototype.showNotification = function(notifs, lsReadFlag)
  * @param {number} dx X-coordinate of the translation.
  * @param {number} dy Y-coordinate of the translation.
  */
+
 App.prototype.save = function(name, done)
 {
 	var file = this.getCurrentFile();
@@ -6475,6 +6569,7 @@ App.prototype.save = function(name, done)
 
 			Editor.addRetryToError(err, mxUtils.bind(this, function()
 			{
+				console.log(8)
 				this.save(name, done);
 			}));
 
@@ -6554,6 +6649,9 @@ App.prototype.getExtensionForService = function(name)
  */
 App.prototype.getServiceForName = function(name)
 {
+	if (name == App.MODE_LZC) {
+		return {}
+	}
 	if (name == App.MODE_GOOGLE)
 	{
 		return this.drive;
@@ -6589,6 +6687,9 @@ App.prototype.getServiceForName = function(name)
  */
 App.prototype.getTitleForService = function(name)
 {
+	if (name == App.MODE_LZC) {
+		return mxResources.get("lzc")
+	}
 	if (name == App.MODE_GOOGLE)
 	{
 		return mxResources.get('googleDrive');

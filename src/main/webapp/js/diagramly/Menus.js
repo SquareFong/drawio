@@ -3875,6 +3875,36 @@
 		
 		this.put('openFrom', new Menu(function(menu, parent)
 		{
+			
+			menu.addItem(
+				"从懒猫微服打开...", 
+				null,
+				function() {
+					if (!window.lzcPicker) {
+						window.lzcPicker = document.getElementById('lzc-file-picker');
+						window.lzcPicker._instance.exposed.init('/_lzc/files/home');
+						window.lzcPicker.addEventListener('visible', () => {
+							window.lzcPicker._instance.exposed.close();
+						});
+						window.lzcPicker.addEventListener('submit', (raw) => {
+							let path = raw.detail[0].filename
+							let url = '/_lzc/files/home' + path;
+							
+							window.lzcDest = raw;
+							window.lzcPicker._instance.exposed.close();
+							
+							let u = new URL(location.href)
+							u.pathname = "/webdav-plugin.html"
+							u.searchParams.set("fileUrl", url)
+							location.href = u.toString()
+						});
+					}
+					document.getElementById('lzc-file-picker')._instance.exposed.open();
+				},
+				parent);
+			
+			menu.addSeparator(parent);
+
 			if (editorUi.drive != null)
 			{
 				menu.addItem(mxResources.get('googleDrive') + '...', null, function()

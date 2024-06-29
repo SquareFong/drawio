@@ -1,0 +1,232 @@
+<html>
+<title>Drwaio for WebDav</title>
+<head>
+    <style type="text/css">
+        iframe {
+            border:0;
+            background-color:#fff;
+            position:fixed;
+            top:0;
+            left:0;
+            right:0;
+            bottom:0;
+            width:100%;
+            height:100%
+        }
+        html, body {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            border: 0;
+        }
+    </style>
+    <script type="text/javascript">
+        /**
+         *
+         * @param verb 请求方法
+         * @param url  请求地址
+         * @param data 请求数据
+         * @param callback 回调处理
+         */
+     function xhr(verb, url, data, callback)
+     {
+			const req = new XMLHttpRequest();
+            // 本页面get 禁止缓存
+            if(verb.toLocaleUpperCase() == "get"){
+                req.setRequestHeader("Cache-Control", 'no-cache');
+             }
+			req.onreadystatechange = function()
+			{
+				if (req.readyState == 4)
+				{
+					callback(req);
+				}
+			};
+			req.open(verb, url, true);
+			req.send(data);
+		}
+
+     /**
+      * 获取浏览器地址栏参数
+      * @returns {Object}
+      */
+    function getLocationData() {
+            const result = {};
+            const params = window.location.search.slice(1).split('&');
+            for (var i = 0; i < params.length; i++) {
+                const idx = params[i].indexOf('=');
+                if (idx > 0) {
+                    result[decodeURIComponent(params[i].substring(0, idx))] = decodeURIComponent(params[i].substring(idx + 1));
+                }
+            }
+            return result;
+        }
+        function blobToDataURL (blob, callback) {
+            const a = new FileReader();
+            a.onload = function (e) {
+                callback(e.target.result);
+            }
+            a.readAsDataURL(blob);
+        }
+
+        /**
+         *
+         * @param path 文件url
+         * @param content xml 文本内容
+         * @param callback 保存文件的回调
+         * @param editor 指定drawio编辑器的地址
+         */
+       function edit(path, content, callback,editor) {
+            const iframe = document.createElement('iframe');
+            iframe.setAttribute('frameborder', '0');
+
+            const close = function () {
+                window.removeEventListener('message', receive);
+                document.body.removeChild(iframe);
+            };
+
+            const save = function (data) {
+                iframe.contentWindow.postMessage(JSON.stringify(
+                    {
+                        action: 'spinner',
+                        message: 'Saving',
+                        show: 1
+                    }), '*');
+                // no-unused-vars
+                callback(data, function (success) {
+                    iframe.contentWindow.postMessage(JSON.stringify(
+                        {
+                            action: 'spinner',
+                            show: 0,
+                            message : "保存成功"
+                        }), '*');
+
+                    if (success) {
+                        // close();
+                    }
+                }, iframe);
+            };
+
+            const receive = function (evt) {
+                if (evt.data.length > 0) {
+                    var msg = JSON.parse(evt.data);
+
+                    if (msg.event == 'init') {
+                        if (content == null) {
+                            iframe.contentWindow.postMessage(JSON.stringify(
+                                {
+                                    action: 'load',
+                                    autosave: 0,
+                                    xml: ''
+                                }), '*');
+                        } else if (/(\.png)$/i.test(path)) {
+                            iframe.contentWindow.postMessage(JSON.stringify(
+                                {
+                                    action: 'load',
+                                    autosave: 0,
+                                    xmlpng: 'data:image/png;base64,' + content
+                                }), '*');
+                        } else {
+                            iframe.contentWindow.postMessage(JSON.stringify(
+                                {
+                                    action: 'load',
+                                    autosave: 0,
+                                    xml: content
+                                }), '*');
+                        }
+                    } else if (msg.event == 'export') {
+
+                        console.log("export ing")
+                        let data = (msg.data.substring(0, 5) == 'data:') ?
+                            msg.data.substring(msg.data.indexOf(',') + 1) :
+                            msg.data;
+                        save(data);
+                    } else if (msg.event == 'save') {
+                        console.log("save ing")
+                        if ((/\.(png|svg|html)$/i).test(path)) {
+                            let ext = path.substring(path.lastIndexOf('.') + 1);
+
+                            // Additional export step required for PNG, SVG and HTML
+                            iframe.contentWindow.postMessage(JSON.stringify(
+                                {
+                                    spin: 'Saving',
+                                    action: 'export',
+                                    format: (/(\.html)$/i.test(path)) ? 'html' : 'xml' + ext,
+                                    xml: msg.xml
+                                }), '*');
+                        } else {
+                            save(msg.xml);
+                        }
+                    } else if (msg.event == 'exit') {
+                        // 既然是退出，直接关闭当前窗口是一种不错的选择。
+                        (function () {
+                            window.parent.opener = null;
+                            window.parent.open('', '_self', '');
+                            window.parent.close();
+                        })();
+                        close();
+                    }
+                }
+            };
+
+            window.addEventListener('message', receive);
+            iframe.setAttribute('src', editor);
+            document.body.appendChild(iframe);
+        }
+
+        function load(){
+           // 默认编辑器，可以替换。 建议对参数进行URL编码
+            let defaultEditor = "/?embed=1&ui=atlas&spin=1&modified=unsavedChanges&proto=json";
+            const paramsMap = self.getLocationData();
+
+            const isUrl = function (url){
+                console.log(!url.startsWith("http://"))
+                return url.startsWith("http://") || url.startsWith("https://")
+            }
+            console.log(paramsMap['fileUrl'])
+            if (!paramsMap['fileUrl'] || isUrl(paramsMap['fileUrl'])) {
+                alert("参数错误")
+                return;
+            }
+            const fileUrl = paramsMap['fileUrl'];
+            if(paramsMap["editor"]){
+                defaultEditor = paramsMap["editor"];
+            }
+            // 参数检测结束------------------------------------------------------------------
+
+            let editFunc = function (fileUrl, data) {
+                self.edit(fileUrl, data,
+                    function (data, fn) {
+                        // save、file to webdav
+                        xhr("put",fileUrl,data,function (req) {
+                            let isSuccess = (req.responseText == 'Created')
+                            fn(isSuccess);
+                            if (!isSuccess) {alert("保存失败");}
+                        })
+                    },
+                    defaultEditor);
+            }
+
+            // 读取文件开始-----------------------------------------------------------------
+            xhr("get",fileUrl,"",function (req){
+                if(req.status == 200){
+                    editFunc(fileUrl, req.responseText);
+                }
+                // 找不到文件也进入编辑页面，用户点击保存后再同步到webdav
+                else  if(req.status == 404){
+                    editFunc(fileUrl, "");
+                }else{
+                    alert("网络异常，请稍后再试 ！");
+                }
+            })
+            // 读取文件结束------------------------------------------------------------------
+        }
+
+    </script>
+</head>
+<body onload="load();"></body>
+
+</html>
+
+

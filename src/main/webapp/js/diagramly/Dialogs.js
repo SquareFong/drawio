@@ -2,7 +2,12 @@
  * Copyright (c) 2006-2020, JGraph Ltd
  * Copyright (c) 2006-2020, draw.io AG
  */
-
+var SkipDialog = function(editorUi){
+	var prev = Editor.useLocalStorage;
+	editorUi.createFile(editorUi.defaultFilename,
+		null, null, null, null, null, null, true);
+	Editor.useLocalStorage = prev;
+}
 var StorageDialog = function(editorUi, fn, rowLimit)
 {
 	rowLimit = (rowLimit != null) ? rowLimit : 2;
@@ -202,7 +207,10 @@ var StorageDialog = function(editorUi, fn, rowLimit)
 	var addButtons = function()
 	{
 		count = 0;
-		
+		addLogo(IMAGE_PATH + '/google-drive-logo.svg', "懒猫网盘", App.MODE_GOOGLE, null, null, function(){
+			console.log("fuck123")
+		});
+
 		if (typeof window.DriveClient === 'function')
 		{
 			addLogo(IMAGE_PATH + '/google-drive-logo.svg', mxResources.get('googleDrive'), App.MODE_GOOGLE, 'drive');
@@ -5048,7 +5056,7 @@ var SaveDialog = function(editorUi, title, saveFn, disabledModes, data, mimeType
 	mxUtils.write(resetOption, mxResources.get('reset'));
 	resetOption.setAttribute('value', 'reset');
 
-	var localServices = ['browser', 'device', 'download', '_blank'];
+	var localServices = ['browser', 'device', 'download', '_blank', 'lzc'];
 	var dash = '&nbsp;&nbsp;&#8211&nbsp;&nbsp;';
 
 	var dashNode = document.createElement('option');
@@ -5242,6 +5250,8 @@ var SaveDialog = function(editorUi, title, saveFn, disabledModes, data, mimeType
 				storageSelect.appendChild(dashNode.cloneNode(true));
 			}
 		}
+
+		addStorageEntry(App.MODE_LZC, mxResources.get('lzcPick'))
 
 		addStorageEntry(App.MODE_GOOGLE, mxResources.get('myDrive'),
 			'root', null, null, 'root');
